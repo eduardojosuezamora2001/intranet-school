@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+/* Theme Tokens */
+html[data-theme="light"] {
+  --bg-app: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-header: #0f172a;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --primary-accent: #4338ca;
+  --sidebar-bg: #ffffff;
+}
+
+html[data-theme="dark"] {
+  --bg-app: #090d16;
+  --bg-card: #111827;
+  --bg-header: #030712;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-color: #1e293b;
+  --primary-accent: #6366f1;
+  --sidebar-bg: #0f172a;
+}
+
+html[data-theme="esmeralda"] {
+  --bg-app: #f0fdf4;
+  --bg-card: #ffffff;
+  --bg-header: #064e3b;
+  --text-main: #064e3b;
+  --text-muted: #047857;
+  --border-color: #bbf7d0;
+  --primary-accent: #059669;
+  --sidebar-bg: #ffffff;
+}
+
+html[data-theme="burdeos"] {
+  --bg-app: #fff1f2;
+  --bg-card: #ffffff;
+  --bg-header: #4c0519;
+  --text-main: #4c0519;
+  --text-muted: #9f1239;
+  --border-color: #fecdd3;
+  --primary-accent: #be123c;
+  --sidebar-bg: #ffffff;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dynamic theme overrides for Cards and Sidebars */
+html[data-theme="dark"] .bg-white {
+  background-color: #111827 !important;
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .border-slate-200,
+html[data-theme="dark"] .border-slate-100 {
+  border-color: #1e293b !important;
+}
+
+html[data-theme="dark"] .text-slate-900,
+html[data-theme="dark"] .text-slate-800 {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .text-slate-700,
+html[data-theme="dark"] .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"] .bg-slate-50,
+html[data-theme="dark"] .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
