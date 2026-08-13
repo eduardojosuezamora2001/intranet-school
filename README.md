@@ -27,9 +27,9 @@ El sistema se inicia automáticamente con datos de prueba sembrados en SQLite:
 | Rol | Usuario | Contraseña | Alumno Vinculado / Descripción |
 |---|---|---|---|
 | **Administración** | `admin` | `admin123` | Control total del sistema y gestión de usuarios |
-| **Docente** | `profesor.garcia` | `docente123` | Profesor Javier García (Profesor de 4º Primaria) |
-| **Estudiante / Familia** | `familia.perez` | `familia123` | Tutor de Mateo Pérez (4º Primaria A) |
-| **Estudiante / Familia** | `familia.gomez` | `familia123` | Tutor de Sofia Gómez (4º Primaria A) |
+| **Docente** | `docente.garcia1` | `docente123` | Profesor Javier García (Profesor de 4º Primaria) |
+| **Estudiante / Familia** | `familia.perez1` | `familia123` | Tutor de Mateo Pérez (4º Primaria A) |
+| **Estudiante / Familia** | `familia.gomez1` | `familia123` | Tutor de Sofia Gómez (4º Primaria A) |
 
 > 💡 **Tip:** En la pantalla de Login encontrará botones de **acceso rápido de 1-clic** para ingresar con cualquiera de estas cuentas sin escribir.
 
