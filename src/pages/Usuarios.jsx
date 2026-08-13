@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { query, run, hashPassword, setUserStudents } from '../services/db';
+import { toast } from 'sonner';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table';
 import { Button } from '../components/ui/button';
@@ -251,12 +252,28 @@ export function Usuarios() {
       setIsDialogOpen(false);
       loadData();
       refreshUser();
+      
+      if (editingUser) {
+        toast.success('Usuario actualizado', {
+          description: `${formData.nombre} fue modificado correctamente.`,
+        });
+      } else {
+        toast.success('Usuario creado', {
+          description: `${formData.nombre} fue registrado con éxito.`,
+        });
+      }
     } catch (err) {
       console.error(err);
       if (err.message && err.message.includes('UNIQUE')) {
         setFormError("El nombre de usuario ya está registrado.");
+        toast.error('Usuario duplicado', {
+          description: 'Este nombre de usuario ya existe.',
+        });
       } else {
         setFormError("Error al guardar el usuario.");
+        toast.error('Error al guardar', {
+          description: 'Intenta nuevamente.',
+        });
       }
     }
   };
@@ -264,13 +281,20 @@ export function Usuarios() {
   const handleDeleteUser = async () => {
     if (!deletingUser) return;
     try {
+      const userName = deletingUser.nombre;
       await run(`DELETE FROM usuarios WHERE id = ?`, [deletingUser.id]);
       await run(`DELETE FROM usuario_estudiantes WHERE usuario_id = ?`, [deletingUser.id]);
       setDeletingUser(null);
       loadData();
       refreshUser();
+      toast.success('Usuario eliminado', {
+        description: `${userName} fue removido del sistema.`,
+      });
     } catch (err) {
       console.error(err);
+      toast.error('Error al eliminar', {
+        description: 'No se pudo borrar el usuario.',
+      });
     }
   };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { query, run } from '../services/db';
+import { toast } from 'sonner';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -83,9 +84,15 @@ export function Comunicados() {
       );
       setIsDialogOpen(false);
       loadComunicados();
+      toast.success('Comunicado publicado', {
+        description: `"${formData.titulo}" fue enviado a ${formData.destinatarios}.`,
+      });
     } catch (err) {
       console.error(err);
       setFormError("Error al publicar el comunicado.");
+      toast.error('Error al publicar', {
+        description: 'No se pudo guardar el comunicado. Intenta de nuevo.',
+      });
     }
   };
 
@@ -94,8 +101,18 @@ export function Comunicados() {
       const newPin = item.fijado === 1 ? 0 : 1;
       await run(`UPDATE comunicados SET fijado = ? WHERE id = ?`, [newPin, item.id]);
       loadComunicados();
+      if (newPin === 1) {
+        toast.success('Comunicado fijado', {
+          description: 'Se mostró al inicio del tablón.',
+        });
+      } else {
+        toast.info('Comunicado desanclado');
+      }
     } catch (err) {
       console.error(err);
+      toast.error('Error al actualizar', {
+        description: 'No se pudo cambiar el estado de fijado.',
+      });
     }
   };
 
@@ -103,8 +120,14 @@ export function Comunicados() {
     try {
       await run(`DELETE FROM comunicados WHERE id = ?`, [id]);
       loadComunicados();
+      toast.success('Comunicado eliminado', {
+        description: 'Se removió del tablón.',
+      });
     } catch (err) {
       console.error(err);
+      toast.error('Error al eliminar', {
+        description: 'No se pudo borrar el comunicado.',
+      });
     }
   };
 
