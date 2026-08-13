@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { ThemeProvider } from './context/ThemeContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { Chatbot } from './components/Chatbot';
@@ -12,9 +12,11 @@ import { Asistencia } from './pages/Asistencia';
 import { Usuarios } from './pages/Usuarios';
 import { BaseDatos } from './pages/BaseDatos';
 import { GraduationCap } from 'lucide-react';
+import { Toaster } from './components/ui/sonner';
 
 function MainApp() {
   const { currentUser, loading } = useAuth();
+  const { theme } = useTheme();
   const [currentTab, setCurrentTab] = useState('dashboard');
 
   if (loading) {
@@ -60,7 +62,7 @@ function MainApp() {
           {renderContent()}
         </main>
       </div>
-      <Chatbot currentTab={currentTab} />
+      <Toaster theme={theme} position="top-right" richColors closeButton />
     </div>
   );
 }
