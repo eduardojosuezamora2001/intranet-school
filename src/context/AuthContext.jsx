@@ -1,13 +1,58 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { query, hashPassword, initDatabase } from '../services/db';
+import { query, hashPassword, initDatabase, getUserStudents } from '../services/db';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
+  const [linkedStudents, setLinkedStudents] = useState([]);
+  const [selectedStudentId, setSelectedStudentIdState] = useState(null);
   const [studentInfo, setStudentInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dbReady, setDbReady] = useState(false);
+
+  const loadUserStudents = (user) => {
+    if (!user) {
+      setLinkedStudents([]);
+      setStudentInfo(null);
+      setSelectedStudentIdState(null);
+      return;
+    }
+
+    let students = getUserStudents(user.id);
+    // Fallback to user.estudiante_id if user_estudiantes table had no rows
+    if (students.length === 0 && user.estudiante_id) {
+      const res = query(`SELECT * FROM estudiantes WHERE id = ?`, [user.estudiante_id]);
+      if (res.length > 0) {
+        students = [res[0]];
+      }
+    }
+
+    setLinkedStudents(students);
+
+    if (students.length > 0) {
+      const savedStudentId = sessionStorage.getItem('san_martin_active_student_id');
+      const found = savedStudentId ? students.find(s => s.id === parseInt(savedStudentId)) : null;
+      const active = found || students[0];
+      setSelectedStudentIdState(active.id);
+      setStudentInfo(active);
+      sessionStorage.setItem('san_martin_active_student_id', active.id.toString());
+    } else {
+      setSelectedStudentIdState(null);
+      setStudentInfo(null);
+      sessionStorage.removeItem('san_martin_active_student_id');
+    }
+  };
+
+  const setSelectedStudentId = (id) => {
+    const numId = parseInt(id);
+    const found = linkedStudents.find(s => s.id === numId);
+    if (found) {
+      setSelectedStudentIdState(numId);
+      setStudentInfo(found);
+      sessionStorage.setItem('san_martin_active_student_id', numId.toString());
+    }
+  };
 
   useEffect(() => {
     async function prepare() {
@@ -17,15 +62,13 @@ export const AuthProvider = ({ children }) => {
         const stored = sessionStorage.getItem('san_martin_user');
         if (stored) {
           const userObj = JSON.parse(stored);
-          // Verify user still exists in DB
           const users = query(`SELECT * FROM usuarios WHERE id = ?`, [userObj.id]);
           if (users.length > 0) {
             setCurrentUser(users[0]);
-            if (users[0].estudiante_id) {
-              loadStudent(users[0].estudiante_id);
-            }
+            loadUserStudents(users[0]);
           } else {
             sessionStorage.removeItem('san_martin_user');
+            sessionStorage.removeItem('san_martin_active_student_id');
           }
         }
       } catch (err) {
@@ -36,17 +79,6 @@ export const AuthProvider = ({ children }) => {
     }
     prepare();
   }, []);
-
-  function loadStudent(estudianteId) {
-    if (!estudianteId) {
-      setStudentInfo(null);
-      return;
-    }
-    const res = query(`SELECT * FROM estudiantes WHERE id = ?`, [estudianteId]);
-    if (res.length > 0) {
-      setStudentInfo(res[0]);
-    }
-  }
 
   const login = async (username, password) => {
     if (!dbReady) await initDatabase();
@@ -64,20 +96,18 @@ export const AuthProvider = ({ children }) => {
     const user = users[0];
     setCurrentUser(user);
     sessionStorage.setItem('san_martin_user', JSON.stringify(user));
-
-    if (user.estudiante_id) {
-      loadStudent(user.estudiante_id);
-    } else {
-      setStudentInfo(null);
-    }
+    loadUserStudents(user);
 
     return user;
   };
 
   const logout = () => {
     setCurrentUser(null);
+    setLinkedStudents([]);
     setStudentInfo(null);
+    setSelectedStudentIdState(null);
     sessionStorage.removeItem('san_martin_user');
+    sessionStorage.removeItem('san_martin_active_student_id');
   };
 
   const refreshUser = () => {
@@ -87,9 +117,7 @@ export const AuthProvider = ({ children }) => {
       const u = users[0];
       setCurrentUser(u);
       sessionStorage.setItem('san_martin_user', JSON.stringify(u));
-      if (u.estudiante_id) {
-        loadStudent(u.estudiante_id);
-      }
+      loadUserStudents(u);
     }
   };
 
@@ -98,6 +126,9 @@ export const AuthProvider = ({ children }) => {
       value={{
         currentUser,
         studentInfo,
+        linkedStudents,
+        selectedStudentId,
+        setSelectedStudentId,
         loading,
         dbReady,
         login,

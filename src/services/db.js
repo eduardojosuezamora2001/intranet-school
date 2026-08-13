@@ -76,13 +76,44 @@ export async function initDatabase() {
   if (savedData && savedData.length > 0) {
     console.log("Loaded existing SQLite database from IndexedDB.");
     dbInstance = new SQL.Database(savedData);
+    try {
+      const res = dbInstance.exec("SELECT COUNT(*) FROM estudiantes");
+      const count = res[0] ? res[0].values[0][0] : 0;
+      if (count < 50) {
+        console.log("Upgrading database to 100 students, 40 families, 20 teachers...");
+        dbInstance.exec(`
+          DROP TABLE IF EXISTS usuario_estudiantes;
+          DROP TABLE IF EXISTS usuarios;
+          DROP TABLE IF EXISTS estudiantes;
+          DROP TABLE IF EXISTS calificaciones;
+          DROP TABLE IF EXISTS asistencia;
+          DROP TABLE IF EXISTS comunicados;
+        `);
+        await seedDatabase(dbInstance);
+      }
+    } catch (e) {
+      console.warn("Reseeding database due to schema update:", e);
+      await seedDatabase(dbInstance);
+    }
   } else {
     console.log("Creating fresh SQLite database and seeding default data...");
     dbInstance = new SQL.Database();
     await seedDatabase(dbInstance);
-    const data = dbInstance.export();
-    await saveToIndexedDB(data);
   }
+
+  // Migration / table check for usuario_estudiantes
+  dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS usuario_estudiantes (
+      usuario_id INTEGER NOT NULL,
+      estudiante_id INTEGER NOT NULL,
+      PRIMARY KEY (usuario_id, estudiante_id)
+    );
+    INSERT OR IGNORE INTO usuario_estudiantes (usuario_id, estudiante_id)
+    SELECT id, estudiante_id FROM usuarios WHERE estudiante_id IS NOT NULL;
+  `);
+
+  const data = dbInstance.export();
+  await saveToIndexedDB(data);
 
   return dbInstance;
 }
@@ -134,6 +165,12 @@ async function seedDatabase(db) {
       fecha_creacion TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS usuario_estudiantes (
+      usuario_id INTEGER NOT NULL,
+      estudiante_id INTEGER NOT NULL,
+      PRIMARY KEY (usuario_id, estudiante_id)
+    );
+
     CREATE TABLE IF NOT EXISTS estudiantes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       codigo TEXT UNIQUE NOT NULL,
@@ -179,72 +216,176 @@ async function seedDatabase(db) {
     );
   `);
 
-  // Seed Students
-  db.run(`
-    INSERT INTO estudiantes (id, codigo, nombre, curso, seccion, tutor_nombre, tutor_email, fecha_nacimiento)
-    VALUES 
-    (1, 'EST-2026-001', 'Mateo Pérez', '4º Educación Primaria', 'A', 'Carlos Pérez', 'familia.perez@sanmartin.edu.es', '2016-04-12'),
-    (2, 'EST-2026-002', 'Sofia Gómez', '4º Educación Primaria', 'A', 'Elena Gómez', 'familia.gomez@sanmartin.edu.es', '2016-08-25'),
-    (3, 'EST-2026-003', 'Lucas Fernández', '5º Educación Primaria', 'B', 'Marta Fernández', 'marta.f@sanmartin.edu.es', '2015-02-18');
-  `);
-
-  // Hash initial passwords
+  // Hash default passwords
   const adminPass = await hashPassword('admin123');
   const docentePass = await hashPassword('docente123');
   const familiaPass = await hashPassword('familia123');
 
-  // Seed Users
+  // 1. Admin
   db.run(`
     INSERT INTO usuarios (username, password_hash, nombre, email, rol, estudiante_id)
-    VALUES 
-    ('admin', '${adminPass}', 'Dirección San Martín', 'admin@sanmartin.edu.es', 'administracion', NULL),
-    ('profesor.garcia', '${docentePass}', 'Prof. Javier García', 'javier.garcia@sanmartin.edu.es', 'docente', NULL),
-    ('familia.perez', '${familiaPass}', 'Carlos Pérez (Padre de Mateo)', 'familia.perez@sanmartin.edu.es', 'estudiante_familia', 1),
-    ('familia.gomez', '${familiaPass}', 'Elena Gómez (Madre de Sofia)', 'familia.gomez@sanmartin.edu.es', 'estudiante_familia', 2);
+    VALUES ('admin', '${adminPass}', 'Dirección San Martín', 'admin@sanmartin.edu.es', 'administracion', NULL);
   `);
 
-  // Seed Calificaciones (Grades)
-  db.run(`
-    INSERT INTO calificaciones (estudiante_id, asignatura, trimestre, nota, observacion, docente_nombre)
-    VALUES 
-    (1, 'Matemáticas', '1º Trimestre', 9.5, 'Excelente desempeño en resolución de problemas aritméticos.', 'Prof. Javier García'),
-    (1, 'Lengua Castellana', '1º Trimestre', 8.8, 'Muy buena comprensión lectora y ortografía impecable.', 'Prof. Javier García'),
-    (1, 'Ciencias Naturales', '1º Trimestre', 9.0, 'Gran participación en el proyecto de ecosistemas.', 'Prof. Javier García'),
-    (1, 'Matemáticas', '2º Trimestre', 9.0, 'Mantiene el ritmo alto de trabajo.', 'Prof. Javier García'),
-    (2, 'Matemáticas', '1º Trimestre', 7.5, 'Buen progreso, requiere repasar las tablas de multiplicar.', 'Prof. Javier García'),
-    (2, 'Lengua Castellana', '1º Trimestre', 9.2, 'Destacada creatividad en la redacción de cuentos.', 'Prof. Javier García'),
-    (3, 'Matemáticas', '1º Trimestre', 8.0, 'Buen rendimiento continuo.', 'Prof. Javier García');
-  `);
+  // 2. 20 Teachers
+  const teacherFirstNames = ["Javier", "Ana", "Roberto", "Carmen", "Fernando", "Isabel", "Diego", "Laura", "Alberto", "Patricia", "Andrés", "Teresa", "Manuel", "Beatriz", "Gonzalo", "Cristina", "Ricardo", "Silvia", "Jorge", "Lucía"];
+  const teacherLastNames = ["García", "Martínez", "López", "Ruiz", "Sánchez", "Torres", "Morales", "Navarro", "Romero", "Blanco", "Castro", "Ortega", "Delgado", "Mendoza", "Rubio", "Marín", "Núñez", "Medina", "Castillo", "Serrano"];
 
-  // Seed Attendance
-  db.run(`
-    INSERT INTO asistencia (estudiante_id, fecha, estado, observacion, docente_nombre)
-    VALUES 
-    (1, '2026-08-10', 'Presente', 'Puntualidad en aula', 'Prof. Javier García'),
-    (1, '2026-08-11', 'Presente', '', 'Prof. Javier García'),
-    (1, '2026-08-12', 'Justificado', 'Cita médica notificada por la familia', 'Prof. Javier García'),
-    (2, '2026-08-10', 'Presente', '', 'Prof. Javier García'),
-    (2, '2026-08-11', 'Tardanza', 'Llegada 10 min tarde por tráfico', 'Prof. Javier García'),
-    (2, '2026-08-12', 'Presente', '', 'Prof. Javier García'),
-    (3, '2026-08-12', 'Ausente', 'Sin justificar aún', 'Prof. Javier García');
-  `);
+  for (let i = 0; i < 20; i++) {
+    const fn = teacherFirstNames[i];
+    const ln = teacherLastNames[i];
+    const title = (i % 2 === 0) ? `Prof. ${fn} ${ln}` : `Profª. ${fn} ${ln}`;
+    const username = `docente.${ln.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}${i + 1}`;
+    const email = `${username}@sanmartin.edu.es`;
+    db.run(
+      `INSERT INTO usuarios (username, password_hash, nombre, email, rol, estudiante_id) VALUES (?, ?, ?, ?, ?, NULL)`,
+      [username, docentePass, title, email, 'docente']
+    );
+  }
 
-  // Seed Announcements (Comunicados)
+  // 3. 40 Families (Padres)
+  const parentFirstNames = ["Carlos", "Elena", "Marta", "José", "María", "Luis", "Ana", "Pedro", "Sofia", "Juan", "Laura", "David", "Carmen", "Javier", "Lucía", "Miguel", "Isabel", "Antonio", "Paula", "Francisco", "Raquel", "Manuel", "Rosa", "Alejandro", "Teresa", "Daniel", "Alicia", "Jorge", "Beatriz", "Fernando", "Irene", "Gonzalo", "Silvia", "Adrián", "Patricia", "Hugo", "Clara", "Mario", "Nuria", "Sergio"];
+  const parentLastNames = ["Pérez", "Gómez", "Fernández", "Rodríguez", "López", "González", "Martínez", "Sánchez", "Romero", "Torres", "Navarro", "Ruiz", "Díaz", "Serrano", "Muñoz", "Blanco", "Castro", "Morales", "Ortega", "Delgado", "Mendoza", "Ortiz", "Marín", "Rubio", "Núñez", "Medina", "Castillo", "Santos", "Iglesias", "Garrido", "Cano", "Prieto", "Molina", "Vidal", "Calvo", "Gallego", "Vargas", "Crespo", "Ramos", "Ibañez"];
+
+  const familyUserIds = [];
+
+  for (let i = 0; i < 40; i++) {
+    const pfn = parentFirstNames[i];
+    const pln = parentLastNames[i];
+    const fullName = `${pfn} ${pln} (Familia)`;
+    const cleanLn = pln.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const username = `familia.${cleanLn}${i + 1}`;
+    const email = `${username}@sanmartin.edu.es`;
+
+    db.run(
+      `INSERT INTO usuarios (username, password_hash, nombre, email, rol, estudiante_id) VALUES (?, ?, ?, ?, ?, NULL)`,
+      [username, familiaPass, fullName, email, 'estudiante_familia']
+    );
+
+    const res = db.exec(`SELECT last_insert_rowid() as id`);
+    const uid = res[0].values[0][0];
+    familyUserIds.push({ id: uid, nombre: `${pfn} ${pln}`, email });
+  }
+
+  // 4. 100 Students
+  const studentFirstNames = [
+    "Mateo", "Sofia", "Lucas", "Valentina", "Santiago", "Camila", "Gabriel", "Isabella", "Nicolas", "Lucia",
+    "Daniel", "Mariana", "Alejandro", "Valeria", "Diego", "Emma", "Sebastian", "Victoria", "Benjamin", "Martina",
+    "Leonardo", "Paula", "Joaquin", "Elena", "Samuel", "Sara", "Adrian", "Claudia", "David", "Alba",
+    "Alvaro", "Carla", "Hugo", "Irene", "Mario", "Laura", "Pablo", "Noa", "Marcos", "Julia",
+    "Gonzalo", "Natalia", "Ivan", "Eva", "Ruben", "Alicia", "Oliver", "Lola", "Alex", "Rocio",
+    "Guillermo", "Candela", "Victor", "Clara", "Saul", "Marta", "Hector", "Nerea", "Iker", "Ines",
+    "Eric", "Adriana", "Ignacio", "Miriam", "Marc", "Vera", "Pau", "Vega", "Leo", "Berta",
+    "Bruno", "Diana", "Piero", "Nora", "Dante", "Elia", "Enzo", "Gemma", "Joel", "Lidia",
+    "Axel", "Nuria", "Alan", "Marina", "Ian", "Leire", "Dylan", "Ainhoa", "Thiago", "Celia",
+    "Adam", "Sheila", "Elias", "Sonia", "Gael", "Carlota", "Aaron", "Manuela", "Kilian", "Patricia"
+  ];
+
+  const studentLastNames = [
+    "Pérez", "Gómez", "Fernández", "Rodríguez", "López", "González", "Martínez", "Sánchez", "Romero", "Torres",
+    "Navarro", "Ruiz", "Díaz", "Serrano", "Muñoz", "Blanco", "Castro", "Morales", "Ortega", "Delgado",
+    "Mendoza", "Ortiz", "Marín", "Rubio", "Núñez", "Medina", "Castillo", "Santos", "Iglesias", "Garrido",
+    "Cano", "Prieto", "Molina", "Vidal", "Calvo", "Gallego", "Vargas", "Crespo", "Ramos", "Ibañez",
+    "Aguilar", "Pascual", "Herrera", "Medina", "Vega", "Montero", "Hidalgo", "Gimenez", "Soria", "Vicente",
+    "Soler", "Velasco", "Esteban", "Bravo", "Gallardo", "Pardo", "Lara", "Rivas", "Espinosa", "Campos",
+    "Cabrera", "Moya", "Reyes", "Duran", "Vila", "Fuentes", "Cortes", "Agudo", "Diez", "Caballero",
+    "Nieto", "Vázquez", "Pastor", "Sáez", "Lorenzo", "Heredia", "Montero", "Solís", "Guerra", "Carmona",
+    "Velasco", "Bernal", "Paz", "Mora", "Ferrer", "Arias", "Valero", "Redondo", "Izquierdo", "Raya",
+    "Vargas", "Santamaria", "Crespo", "Guerrero", "Marquez", "Roman", "Mendonca", "Gimeno", "Gallego", "Rios"
+  ];
+
+  const cursosList = [
+    "1º Educación Primaria",
+    "2º Educación Primaria",
+    "3º Educación Primaria",
+    "4º Educación Primaria",
+    "5º Educación Primaria",
+    "6º Educación Primaria"
+  ];
+  const seccionesList = ["A", "B"];
+
+  for (let i = 1; i <= 100; i++) {
+    const fn = studentFirstNames[i - 1];
+    const ln = studentLastNames[i - 1];
+    const fullName = `${fn} ${ln}`;
+    const code = `EST-2026-${String(i).padStart(3, '0')}`;
+    const curso = cursosList[(i - 1) % cursosList.length];
+    const seccion = seccionesList[(i - 1) % seccionesList.length];
+
+    const familyIndex = (i - 1) % 40;
+    const parent = familyUserIds[familyIndex];
+
+    const year = 2014 + ((i - 1) % 6);
+    const month = String(((i % 12) + 1)).padStart(2, '0');
+    const day = String(((i % 28) + 1)).padStart(2, '0');
+    const dob = `${year}-${month}-${day}`;
+
+    db.run(
+      `INSERT INTO estudiantes (id, codigo, nombre, curso, seccion, tutor_nombre, tutor_email, fecha_nacimiento) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [i, code, fullName, curso, seccion, parent.nombre, parent.email, dob]
+    );
+
+    // Link student in usuario_estudiantes
+    db.run(
+      `INSERT INTO usuario_estudiantes (usuario_id, estudiante_id) VALUES (?, ?)`,
+      [parent.id, i]
+    );
+
+    // Also set main estudiante_id on usuarios table if null
+    db.run(
+      `UPDATE usuarios SET estudiante_id = ? WHERE id = ? AND estudiante_id IS NULL`,
+      [i, parent.id]
+    );
+  }
+
+  // 5. Seed Calificaciones & Asistencia for 100 students
+  const asignaturasList = ["Matemáticas", "Lengua Castellana", "Ciencias Naturales", "Ciencias Sociales", "Inglés", "Educación Física"];
+  const docentesList = ["Prof. Javier García", "Profª. Ana Martínez", "Prof. Roberto López", "Profª. Carmen Ruiz"];
+
+  for (let i = 1; i <= 100; i++) {
+    const nota1 = (6.0 + ((i * 3) % 41) / 10).toFixed(1);
+    const nota2 = (6.5 + ((i * 7) % 36) / 10).toFixed(1);
+    const asig1 = asignaturasList[(i - 1) % asignaturasList.length];
+    const asig2 = asignaturasList[(i + 1) % asignaturasList.length];
+    const doc = docentesList[i % docentesList.length];
+
+    db.run(
+      `INSERT INTO calificaciones (estudiante_id, asignatura, trimestre, nota, observacion, docente_nombre) VALUES (?, ?, ?, ?, ?, ?)`,
+      [i, asig1, '1º Trimestre', parseFloat(nota1), 'Buen desempeño y participación constante.', doc]
+    );
+    db.run(
+      `INSERT INTO calificaciones (estudiante_id, asignatura, trimestre, nota, observacion, docente_nombre) VALUES (?, ?, ?, ?, ?, ?)`,
+      [i, asig2, '1º Trimestre', parseFloat(nota2), 'Cumple adecuadamente con los contenidos.', doc]
+    );
+
+    const estado = (i % 9 === 0) ? 'Ausente' : (i % 7 === 0) ? 'Tardanza' : (i % 11 === 0) ? 'Justificado' : 'Presente';
+    db.run(
+      `INSERT INTO asistencia (estudiante_id, fecha, estado, observacion, docente_nombre) VALUES (?, ?, ?, ?, ?)`,
+      [i, '2026-08-11', 'Presente', 'Puntualidad en aula', doc]
+    );
+    db.run(
+      `INSERT INTO asistencia (estudiante_id, fecha, estado, observacion, docente_nombre) VALUES (?, ?, ?, ?, ?)`,
+      [i, '2026-08-12', estado, estado === 'Justificado' ? 'Cita médica notificada por tutor/a' : '', doc]
+    );
+  }
+
+  // 6. Comunicados
   db.run(`
     INSERT INTO comunicados (titulo, contenido, categoria, destinatarios, autor_nombre, fecha, fijado)
     VALUES 
     ('Bienvenida al Curso Escolar 2026-2027', 'Damos la bienvenida a toda la comunidad educativa del Instituto San Martín. Recordamos que las reuniones presenciales con tutores comenzarán la próxima semana.', 'General', 'Todos', 'Dirección San Martín', '2026-08-01 09:00:00', 1),
     ('Circular sobre Horario de Actividades Extracurriculares', 'Se publican los horarios provisionales de robótica, baloncesto y teatro. Las inscripciones se gestionan directamente a través del formulario oficial.', 'General', 'Familias', 'Dirección San Martín', '2026-08-05 11:30:00', 0),
     ('Reunión Claustro de Docentes - Evaluación Diagnóstica', 'Estimados docentes, este viernes a las 14:00h tendremos la sesión extraordinaria para revisar los protocolos de apoyo educativo.', 'Académico', 'Docentes', 'Prof. Javier García', '2026-08-08 16:00:00', 0),
-    ('Recordatorio: Excursión al Museo de Ciencias', 'Confirmamos el pago de la autorización para los alumnos de 4º y 5º Primaria antes del próximo viernes.', 'Evento', 'Familias', 'Prof. Javier García', '2026-08-11 10:15:00', 1);
+    ('Recordatorio: Excursión al Museo de Ciencias', 'Confirmamos el pago de la autorización para los alumnos de Primaria antes del próximo viernes.', 'Evento', 'Familias', 'Profª. Ana Martínez', '2026-08-11 10:15:00', 1);
   `);
 
-  console.log("Database seeded successfully.");
+  console.log("Database seeded with 100 students, 40 families, and 20 teachers.");
 }
 
 export async function resetDatabaseToSeed() {
   if (!dbInstance) return;
   dbInstance.exec(`
+    DROP TABLE IF EXISTS usuario_estudiantes;
     DROP TABLE IF EXISTS usuarios;
     DROP TABLE IF EXISTS estudiantes;
     DROP TABLE IF EXISTS calificaciones;
@@ -252,6 +393,31 @@ export async function resetDatabaseToSeed() {
     DROP TABLE IF EXISTS comunicados;
   `);
   await seedDatabase(dbInstance);
+  await persistDb();
+}
+
+export function getUserStudents(userId) {
+  if (!userId) return [];
+  return query(`
+    SELECT e.* 
+    FROM estudiantes e
+    JOIN usuario_estudiantes ue ON e.id = ue.estudiante_id
+    WHERE ue.usuario_id = ?
+    ORDER BY e.nombre ASC
+  `, [userId]);
+}
+
+export async function setUserStudents(userId, studentIds = []) {
+  if (!userId) return;
+  const db = getDb();
+  db.run(`DELETE FROM usuario_estudiantes WHERE usuario_id = ?`, [userId]);
+  for (const stId of studentIds) {
+    if (stId) {
+      db.run(`INSERT OR IGNORE INTO usuario_estudiantes (usuario_id, estudiante_id) VALUES (?, ?)`, [userId, parseInt(stId)]);
+    }
+  }
+  const mainStudentId = studentIds.length > 0 && studentIds[0] ? parseInt(studentIds[0]) : null;
+  db.run(`UPDATE usuarios SET estudiante_id = ? WHERE id = ?`, [mainStudentId, userId]);
   await persistDb();
 }
 

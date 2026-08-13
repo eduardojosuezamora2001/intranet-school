@@ -7,7 +7,7 @@ import { ThemeSwitcher } from '../ui/theme-switcher';
 import { GraduationCap, Download, LogOut, User, Database } from 'lucide-react';
 
 export function Header() {
-  const { currentUser, userRole, logout, studentInfo } = useAuth();
+  const { currentUser, userRole, logout, studentInfo, linkedStudents, selectedStudentId, setSelectedStudentId } = useAuth();
 
   const roleBadgeMap = {
     administracion: <Badge variant="admin">Administración</Badge>,
@@ -50,7 +50,6 @@ export function Header() {
             Exportar BD (.sqlite)
           </Button>
 
-
           {/* User Profile Pill */}
           <div className="flex items-center space-x-3 bg-slate-800/80 border border-slate-700/80 px-3 py-1.5 rounded-lg">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-indigo-300 font-semibold text-xs border border-slate-600">
@@ -63,11 +62,26 @@ export function Header() {
                 </span>
                 {roleBadgeMap[userRole]}
               </div>
-              {studentInfo && (
+              {linkedStudents.length > 1 ? (
+                <div className="flex items-center space-x-1 mt-0.5">
+                  <span className="text-[11px] text-indigo-300 font-medium">Estudiante:</span>
+                  <select
+                    value={selectedStudentId || ''}
+                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    className="bg-slate-900 border border-indigo-500/50 text-indigo-200 text-[11px] rounded px-1.5 py-0.5 font-medium focus:outline-none focus:ring-1 focus:ring-indigo-400 cursor-pointer"
+                  >
+                    {linkedStudents.map((st) => (
+                      <option key={st.id} value={st.id}>
+                        {st.nombre} ({st.curso})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : studentInfo ? (
                 <span className="text-[11px] text-indigo-300 block">
                   Tutor de: {studentInfo.nombre} ({studentInfo.curso})
                 </span>
-              )}
+              ) : null}
             </div>
           </div>
 

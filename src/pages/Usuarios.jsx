@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { query, run, hashPassword } from '../services/db';
+import { query, run, hashPassword, setUserStudents } from '../services/db';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table';
 import { Button } from '../components/ui/button';
@@ -8,14 +8,24 @@ import { Badge } from '../components/ui/badge';
 import { Dialog } from '../components/ui/dialog';
 import { Input, Select } from '../components/ui/form-controls';
 import { Alert } from '../components/ui/widgets';
-import { Users, UserPlus, Edit3, Trash2, Search, ShieldAlert, Key } from 'lucide-react';
+import { PaginationControls } from '../components/ui/pagination';
+import { Users, UserPlus, Edit3, Trash2, Search, ShieldAlert, Key, X } from 'lucide-react';
+
+const PAGE_SIZE = 10;
 
 export function Usuarios() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, refreshUser } = useAuth();
   const [usersList, setUsersList] = useState([]);
   const [studentsList, setStudentsList] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('todos');
+  const [studentSearchTerm, setStudentSearchTerm] = useState('');
+
+  // Pagination & Cursor State
+  const [page, setPage] = useState(1);
+  const [cursorStack, setCursorStack] = useState([null]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -26,7 +36,7 @@ export function Usuarios() {
     nombre: '',
     email: '',
     rol: 'estudiante_familia',
-    estudiante_id: ''
+    selected_student_ids: []
   });
   const [formError, setFormError] = useState('');
 
@@ -34,23 +44,100 @@ export function Usuarios() {
   const [deletingUser, setDeletingUser] = useState(null);
 
   useEffect(() => {
+    setPage(1);
+    setCursorStack([null]);
+  }, [searchTerm, roleFilter]);
+
+  useEffect(() => {
     if (isAdmin) {
       loadData();
     }
-  }, [isAdmin]);
+  }, [isAdmin, page, cursorStack, searchTerm, roleFilter]);
 
   function loadData() {
-    const users = query(`
-      SELECT u.*, e.nombre as estudiante_nombre, e.curso as estudiante_curso 
-      FROM usuarios u 
-      LEFT JOIN estudiantes e ON u.estudiante_id = e.id 
-      ORDER BY u.id ASC
+    // Build SQL query with filters and cursor pagination
+    let whereClauses = ["1=1"];
+    let params = [];
+
+    if (roleFilter !== 'todos') {
+      whereClauses.push("u.rol = ?");
+      params.push(roleFilter);
+    }
+
+    if (searchTerm.trim() !== '') {
+      whereClauses.push("(LOWER(u.nombre) LIKE ? OR LOWER(u.username) LIKE ? OR LOWER(u.email) LIKE ?)");
+      const term = `%${searchTerm.toLowerCase().trim()}%`;
+      params.push(term, term, term);
+    }
+
+    const whereSql = whereClauses.join(" AND ");
+
+    // Total count for info
+    const countRes = query(`SELECT COUNT(*) as total FROM usuarios u WHERE ${whereSql}`, params);
+    const total = countRes[0] ? countRes[0].total : 0;
+    setTotalItems(total);
+
+    // Cursor condition: u.id > currentCursor
+    const currentCursor = cursorStack[page - 1];
+    let cursorSql = whereSql;
+    let cursorParams = [...params];
+
+    if (currentCursor !== null && currentCursor !== undefined) {
+      cursorSql += " AND u.id > ?";
+      cursorParams.push(currentCursor);
+    }
+
+    // Cursor pagination query with LIMIT
+    const rawUsers = query(
+      `SELECT u.* FROM usuarios u WHERE ${cursorSql} ORDER BY u.id ASC LIMIT ${PAGE_SIZE + 1}`,
+      cursorParams
+    );
+
+    const hasNext = rawUsers.length > PAGE_SIZE;
+    const paginatedUsers = hasNext ? rawUsers.slice(0, PAGE_SIZE) : rawUsers;
+    setHasNextPage(hasNext);
+
+    // Map linked students for paginated users
+    const userStudentsMap = {};
+    const allLinks = query(`
+      SELECT ue.usuario_id, e.id as estudiante_id, e.nombre as estudiante_nombre, e.curso as estudiante_curso, e.codigo as estudiante_codigo
+      FROM usuario_estudiantes ue
+      JOIN estudiantes e ON ue.estudiante_id = e.id
+      ORDER BY e.nombre ASC
     `);
-    setUsersList(users);
+
+    allLinks.forEach(link => {
+      if (!userStudentsMap[link.usuario_id]) {
+        userStudentsMap[link.usuario_id] = [];
+      }
+      userStudentsMap[link.usuario_id].push(link);
+    });
+
+    const usersWithStudents = paginatedUsers.map(u => ({
+      ...u,
+      linked_students: userStudentsMap[u.id] || []
+    }));
+
+    setUsersList(usersWithStudents);
 
     const students = query(`SELECT * FROM estudiantes ORDER BY nombre ASC`);
     setStudentsList(students);
   }
+
+  const handleNextPage = () => {
+    if (hasNextPage && usersList.length > 0) {
+      const lastUser = usersList[usersList.length - 1];
+      setCursorStack(prev => [...prev, lastUser.id]);
+      setPage(prev => prev + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (page > 1) {
+      setCursorStack(prev => prev.slice(0, prev.length - 1));
+      setPage(prev => prev - 1);
+    }
+  };
 
   if (!isAdmin) {
     return (
@@ -72,6 +159,16 @@ export function Usuarios() {
     return matchesSearch && matchesRole;
   });
 
+  const filteredStudentsForSelection = studentsList.filter((st) => {
+    const q = studentSearchTerm.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      st.nombre.toLowerCase().includes(q) ||
+      (st.codigo && st.codigo.toLowerCase().includes(q)) ||
+      (st.curso && st.curso.toLowerCase().includes(q))
+    );
+  });
+
   const handleOpenAddModal = () => {
     setEditingUser(null);
     setFormData({
@@ -80,22 +177,28 @@ export function Usuarios() {
       nombre: '',
       email: '',
       rol: 'estudiante_familia',
-      estudiante_id: ''
+      selected_student_ids: []
     });
+    setStudentSearchTerm('');
     setFormError('');
     setIsDialogOpen(true);
   };
 
   const handleOpenEditModal = (user) => {
     setEditingUser(user);
+    const existingStudentIds = user.linked_students.map(s => s.estudiante_id);
+    if (existingStudentIds.length === 0 && user.estudiante_id) {
+      existingStudentIds.push(user.estudiante_id);
+    }
     setFormData({
       username: user.username,
       password: '',
       nombre: user.nombre,
       email: user.email,
       rol: user.rol,
-      estudiante_id: user.estudiante_id || ''
+      selected_student_ids: existingStudentIds
     });
+    setStudentSearchTerm('');
     setFormError('');
     setIsDialogOpen(true);
   };
@@ -105,7 +208,9 @@ export function Usuarios() {
     setFormError('');
 
     try {
-      const estId = formData.rol === 'estudiante_familia' && formData.estudiante_id ? parseInt(formData.estudiante_id) : null;
+      let userId = editingUser?.id;
+      const studentIdsToSave = formData.rol === 'estudiante_familia' ? formData.selected_student_ids : [];
+      const mainEstId = studentIdsToSave.length > 0 ? studentIdsToSave[0] : null;
 
       if (editingUser) {
         // Edit existing user
@@ -113,12 +218,12 @@ export function Usuarios() {
           const passHash = await hashPassword(formData.password);
           await run(
             `UPDATE usuarios SET username = ?, password_hash = ?, nombre = ?, email = ?, rol = ?, estudiante_id = ? WHERE id = ?`,
-            [formData.username, passHash, formData.nombre, formData.email, formData.rol, estId, editingUser.id]
+            [formData.username, passHash, formData.nombre, formData.email, formData.rol, mainEstId, editingUser.id]
           );
         } else {
           await run(
             `UPDATE usuarios SET username = ?, nombre = ?, email = ?, rol = ?, estudiante_id = ? WHERE id = ?`,
-            [formData.username, formData.nombre, formData.email, formData.rol, estId, editingUser.id]
+            [formData.username, formData.nombre, formData.email, formData.rol, mainEstId, editingUser.id]
           );
         }
       } else {
@@ -130,12 +235,22 @@ export function Usuarios() {
         const passHash = await hashPassword(formData.password);
         await run(
           `INSERT INTO usuarios (username, password_hash, nombre, email, rol, estudiante_id) VALUES (?, ?, ?, ?, ?, ?)`,
-          [formData.username, passHash, formData.nombre, formData.email, formData.rol, estId]
+          [formData.username, passHash, formData.nombre, formData.email, formData.rol, mainEstId]
         );
+        // Get inserted user id
+        const createdUsers = query(`SELECT id FROM usuarios WHERE username = ?`, [formData.username]);
+        if (createdUsers.length > 0) {
+          userId = createdUsers[0].id;
+        }
+      }
+
+      if (userId) {
+        await setUserStudents(userId, studentIdsToSave);
       }
 
       setIsDialogOpen(false);
       loadData();
+      refreshUser();
     } catch (err) {
       console.error(err);
       if (err.message && err.message.includes('UNIQUE')) {
@@ -150,8 +265,10 @@ export function Usuarios() {
     if (!deletingUser) return;
     try {
       await run(`DELETE FROM usuarios WHERE id = ?`, [deletingUser.id]);
+      await run(`DELETE FROM usuario_estudiantes WHERE usuario_id = ?`, [deletingUser.id]);
       setDeletingUser(null);
       loadData();
+      refreshUser();
     } catch (err) {
       console.error(err);
     }
@@ -211,7 +328,7 @@ export function Usuarios() {
                 <TableHead>Usuario</TableHead>
                 <TableHead>Correo Electrónico</TableHead>
                 <TableHead>Rol</TableHead>
-                <TableHead>Alumno Asignado</TableHead>
+                <TableHead>Alumnos Asignados</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -235,10 +352,14 @@ export function Usuarios() {
                       <Badge variant={user.rol}>{user.rol.replace('_', ' / ')}</Badge>
                     </TableCell>
                     <TableCell>
-                      {user.estudiante_nombre ? (
-                        <span className="text-xs text-slate-700 font-medium">
-                          {user.estudiante_nombre} <span className="text-slate-400">({user.estudiante_curso})</span>
-                        </span>
+                      {user.linked_students && user.linked_students.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {user.linked_students.map((st) => (
+                            <Badge key={st.estudiante_id} variant="outline" className="text-[11px] font-normal bg-indigo-50/50 text-indigo-800 border-indigo-200">
+                              {st.estudiante_nombre} ({st.estudiante_codigo || st.estudiante_curso})
+                            </Badge>
+                          ))}
+                        </div>
                       ) : (
                         <span className="text-xs text-slate-400">-</span>
                       )}
@@ -330,18 +451,115 @@ export function Usuarios() {
           </Select>
 
           {formData.rol === 'estudiante_familia' && (
-            <Select
-              label="Vincular a Estudiante"
-              value={formData.estudiante_id}
-              onChange={(e) => setFormData({ ...formData, estudiante_id: e.target.value })}
-            >
-              <option value="">-- Seleccionar Estudiante --</option>
-              {studentsList.map((st) => (
-                <option key={st.id} value={st.id}>
-                  {st.nombre} ({st.curso} - Sec {st.seccion})
-                </option>
-              ))}
-            </Select>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                  Vincular Estudiantes (Hijos a Cargo)
+                </label>
+                <span className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400">
+                  {formData.selected_student_ids.length} seleccionado(s)
+                </span>
+              </div>
+
+              {/* Search input for students */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Buscar estudiante por nombre o cédula / código..."
+                  value={studentSearchTerm}
+                  onChange={(e) => setStudentSearchTerm(e.target.value)}
+                  className="pl-8 text-xs py-1.5"
+                />
+              </div>
+
+              {/* Selected Badges Pill Box */}
+              {formData.selected_student_ids.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 p-2 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
+                  {formData.selected_student_ids.map((id) => {
+                    const st = studentsList.find((s) => s.id === id);
+                    if (!st) return null;
+                    return (
+                      <span
+                        key={id}
+                        className="inline-flex items-center space-x-1 bg-indigo-600 text-white text-[11px] font-medium px-2 py-0.5 rounded-full shadow-xs"
+                      >
+                        <span>{st.nombre} ({st.codigo})</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              selected_student_ids: formData.selected_student_ids.filter(stId => stId !== id)
+                            });
+                          }}
+                          className="hover:bg-indigo-700 rounded-full p-0.5 transition-colors cursor-pointer"
+                          title="Desvincular"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Filtered Checkbox List */}
+              <div className="max-h-44 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg p-2 space-y-1 bg-slate-50/50 dark:bg-slate-900/50">
+                {filteredStudentsForSelection.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-3 text-center">
+                    No se encontraron estudiantes con &quot;{studentSearchTerm}&quot;.
+                  </p>
+                ) : (
+                  filteredStudentsForSelection.map((st) => {
+                    const isChecked = formData.selected_student_ids.includes(st.id);
+                    return (
+                      <label
+                        key={st.id}
+                        className={`flex items-center justify-between space-x-3 text-xs p-2 rounded transition-colors cursor-pointer ${
+                          isChecked
+                            ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-semibold'
+                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2.5 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData({
+                                  ...formData,
+                                  selected_student_ids: [...formData.selected_student_ids, st.id]
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  selected_student_ids: formData.selected_student_ids.filter(id => id !== st.id)
+                                });
+                              }
+                            }}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                          />
+                          <span className="truncate">{st.nombre}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-[11px] shrink-0">
+                          <span className="font-mono bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded">
+                            {st.codigo}
+                          </span>
+                          <span className="text-slate-400">
+                            {st.curso} - {st.seccion}
+                          </span>
+                        </div>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Puede buscar por nombre o código / cédula para seleccionar múltiples estudiantes.
+              </p>
+            </div>
           )}
 
           <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
