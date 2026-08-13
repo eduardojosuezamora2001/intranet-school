@@ -135,7 +135,7 @@ export function Login() {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Ej. admin, profesor.garcia..."
+                  placeholder="Ej. admin, docente.garcia1..."
                   required
                   className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:ring-indigo-500 focus:border-indigo-500"
                 />
@@ -197,26 +197,26 @@ export function Login() {
 
               <button
                 type="button"
-                onClick={() => handleQuickLogin('profesor.garcia', 'docente123')}
+                onClick={() => handleQuickLogin('docente.garcia1', 'docente123')}
                 className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-left transition-colors cursor-pointer group"
               >
                 <div className="flex items-center space-x-1 text-emerald-400 font-semibold text-xs mb-0.5">
                   <BookOpen className="w-3.5 h-3.5" />
                   <span>Docente</span>
                 </div>
-                <p className="text-[10px] text-slate-400 truncate">profesor.garcia</p>
+                <p className="text-[10px] text-slate-400 truncate">docente.garcia1</p>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleQuickLogin('familia.perez', 'familia123')}
+                onClick={() => handleQuickLogin('familia.perez1', 'familia123')}
                 className="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-left transition-colors cursor-pointer group"
               >
                 <div className="flex items-center space-x-1 text-sky-400 font-semibold text-xs mb-0.5">
                   <Users className="w-3.5 h-3.5" />
                   <span>Familia</span>
                 </div>
-                <p className="text-[10px] text-slate-400 truncate">familia.perez</p>
+                <p className="text-[10px] text-slate-400 truncate">familia.perez1</p>
               </button>
             </div>
           </CardFooter>
