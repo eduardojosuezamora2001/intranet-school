@@ -32,6 +32,19 @@ html[data-theme="esmeralda"] {
   --border-color: #bbf7d0;
   --primary-accent: #059669;
   --sidebar-bg: #ffffff;
+  --accent-50: #ecfdf5;
+  --accent-100: #d1fae5;
+  --accent-200: #a7f3d0;
+  --accent-300: #6ee7b7;
+  --accent-400: #34d399;
+  --accent-500: #10b981;
+  --accent-600: #059669;
+  --accent-700: #047857;
+  --accent-800: #065f46;
+  --accent-900: #064e3b;
+  --accent-950: #022c22;
+  --header-surface: #065f46;
+  --header-border: #047857;
 }
 
 html[data-theme="burdeos"] {
@@ -43,6 +56,19 @@ html[data-theme="burdeos"] {
   --border-color: #fecdd3;
   --primary-accent: #be123c;
   --sidebar-bg: #ffffff;
+  --accent-50: #fff1f2;
+  --accent-100: #ffe4e6;
+  --accent-200: #fecdd3;
+  --accent-300: #fda4af;
+  --accent-400: #fb7185;
+  --accent-500: #f43f5e;
+  --accent-600: #e11d48;
+  --accent-700: #be123c;
+  --accent-800: #9f1239;
+  --accent-900: #881337;
+  --accent-950: #4c0519;
+  --header-surface: #881337;
+  --header-border: #9f1239;
 }
 
 body {
@@ -80,6 +106,364 @@ html[data-theme="dark"] .text-slate-600 {
 html[data-theme="dark"] .bg-slate-50,
 html[data-theme="dark"] .bg-slate-100 {
   background-color: #1e293b !important;
+}
+
+/* Bosque Esmeralda — overrides de acento verde */
+html[data-theme="esmeralda"] .bg-slate-100 {
+  background-color: var(--bg-app) !important;
+}
+
+html[data-theme="esmeralda"] .bg-slate-900 {
+  background-color: var(--bg-header) !important;
+}
+
+html[data-theme="esmeralda"] .bg-slate-800,
+html[data-theme="esmeralda"] .bg-slate-800\/80,
+html[data-theme="esmeralda"] .bg-slate-800\/90 {
+  background-color: var(--header-surface) !important;
+}
+
+html[data-theme="esmeralda"] .bg-slate-700 {
+  background-color: #047857 !important;
+}
+
+html[data-theme="esmeralda"] .border-slate-800,
+html[data-theme="esmeralda"] .border-slate-700,
+html[data-theme="esmeralda"] .border-slate-700\/80 {
+  border-color: var(--header-border) !important;
+}
+
+html[data-theme="esmeralda"] .border-slate-200,
+html[data-theme="esmeralda"] .border-slate-100,
+html[data-theme="esmeralda"] .border-slate-200\/70,
+html[data-theme="esmeralda"] .border-slate-200\/80 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="esmeralda"] .border-slate-300 {
+  border-color: #86efac !important;
+}
+
+html[data-theme="esmeralda"] .text-slate-900,
+html[data-theme="esmeralda"] .text-slate-950 {
+  color: var(--text-main) !important;
+}
+
+html[data-theme="esmeralda"] .text-slate-800,
+html[data-theme="esmeralda"] .text-slate-700 {
+  color: var(--accent-800) !important;
+}
+
+html[data-theme="esmeralda"] .text-slate-600,
+html[data-theme="esmeralda"] .text-slate-500 {
+  color: var(--text-muted) !important;
+}
+
+html[data-theme="esmeralda"] .text-slate-400 {
+  color: var(--accent-500) !important;
+}
+
+html[data-theme="esmeralda"] .bg-slate-50,
+html[data-theme="esmeralda"] .bg-slate-50\/50 {
+  background-color: var(--accent-50) !important;
+}
+
+html[data-theme="esmeralda"] .hover\:bg-slate-50:hover {
+  background-color: var(--accent-50) !important;
+}
+
+html[data-theme="esmeralda"] header .hover\:bg-slate-700:hover {
+  background-color: #047857 !important;
+}
+
+html[data-theme="esmeralda"] .hover\:text-slate-900:hover,
+html[data-theme="esmeralda"] .hover\:text-slate-700:hover {
+  color: var(--text-main) !important;
+}
+
+html[data-theme="esmeralda"] .bg-indigo-50 {
+  background-color: var(--accent-50) !important;
+}
+
+html[data-theme="esmeralda"] .bg-indigo-50\/50 {
+  background-color: rgba(236, 253, 245, 0.5) !important;
+}
+
+html[data-theme="esmeralda"] .bg-indigo-50\/60 {
+  background-color: rgba(236, 253, 245, 0.6) !important;
+}
+
+html[data-theme="esmeralda"] .bg-indigo-50\/70 {
+  background-color: rgba(236, 253, 245, 0.7) !important;
+}
+
+html[data-theme="esmeralda"] .bg-indigo-600 {
+  background-color: var(--accent-600) !important;
+}
+
+html[data-theme="esmeralda"] .bg-indigo-700 {
+  background-color: var(--accent-700) !important;
+}
+
+html[data-theme="esmeralda"] .bg-indigo-950 {
+  background-color: var(--accent-950) !important;
+}
+
+html[data-theme="esmeralda"] .bg-indigo-100 {
+  background-color: var(--accent-100) !important;
+}
+
+html[data-theme="esmeralda"] .text-indigo-950 {
+  color: var(--accent-950) !important;
+}
+
+html[data-theme="esmeralda"] .text-indigo-900 {
+  color: var(--accent-900) !important;
+}
+
+html[data-theme="esmeralda"] .text-indigo-800 {
+  color: var(--accent-800) !important;
+}
+
+html[data-theme="esmeralda"] .text-indigo-700 {
+  color: var(--accent-700) !important;
+}
+
+html[data-theme="esmeralda"] .text-indigo-600 {
+  color: var(--accent-600) !important;
+}
+
+html[data-theme="esmeralda"] .text-indigo-400 {
+  color: var(--accent-400) !important;
+}
+
+html[data-theme="esmeralda"] .text-indigo-300 {
+  color: var(--accent-300) !important;
+}
+
+html[data-theme="esmeralda"] .border-indigo-100,
+html[data-theme="esmeralda"] .border-indigo-200 {
+  border-color: var(--accent-200) !important;
+}
+
+html[data-theme="esmeralda"] .border-indigo-700 {
+  border-color: var(--accent-700) !important;
+}
+
+html[data-theme="esmeralda"] .hover\:bg-indigo-500:hover {
+  background-color: var(--accent-500) !important;
+}
+
+html[data-theme="esmeralda"] .hover\:bg-indigo-800:hover {
+  background-color: var(--accent-800) !important;
+}
+
+html[data-theme="esmeralda"] .from-slate-900 {
+  --tw-gradient-from: var(--bg-header) !important;
+}
+
+html[data-theme="esmeralda"] .via-indigo-950 {
+  --tw-gradient-via: var(--accent-950) !important;
+}
+
+html[data-theme="esmeralda"] .to-slate-900 {
+  --tw-gradient-to: var(--bg-header) !important;
+}
+
+html[data-theme="esmeralda"] .focus\:ring-indigo-500:focus,
+html[data-theme="esmeralda"] .focus\:ring-indigo-600:focus {
+  --tw-ring-color: var(--accent-500) !important;
+}
+
+html[data-theme="esmeralda"] .focus\:border-indigo-500:focus {
+  border-color: var(--accent-500) !important;
+}
+
+html[data-theme="esmeralda"] ::-webkit-scrollbar-thumb {
+  background: var(--accent-300);
+}
+
+html[data-theme="esmeralda"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-500);
+}
+
+/* Burdeos Real — overrides de acento rojo/burdeos */
+html[data-theme="burdeos"] .bg-slate-100 {
+  background-color: var(--bg-app) !important;
+}
+
+html[data-theme="burdeos"] .bg-slate-900 {
+  background-color: var(--bg-header) !important;
+}
+
+html[data-theme="burdeos"] .bg-slate-800,
+html[data-theme="burdeos"] .bg-slate-800\/80,
+html[data-theme="burdeos"] .bg-slate-800\/90 {
+  background-color: var(--header-surface) !important;
+}
+
+html[data-theme="burdeos"] .bg-slate-700 {
+  background-color: #9f1239 !important;
+}
+
+html[data-theme="burdeos"] .border-slate-800,
+html[data-theme="burdeos"] .border-slate-700,
+html[data-theme="burdeos"] .border-slate-700\/80 {
+  border-color: var(--header-border) !important;
+}
+
+html[data-theme="burdeos"] .border-slate-200,
+html[data-theme="burdeos"] .border-slate-100,
+html[data-theme="burdeos"] .border-slate-200\/70,
+html[data-theme="burdeos"] .border-slate-200\/80 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="burdeos"] .border-slate-300 {
+  border-color: #fda4af !important;
+}
+
+html[data-theme="burdeos"] .text-slate-900,
+html[data-theme="burdeos"] .text-slate-950 {
+  color: var(--text-main) !important;
+}
+
+html[data-theme="burdeos"] .text-slate-800,
+html[data-theme="burdeos"] .text-slate-700 {
+  color: var(--accent-800) !important;
+}
+
+html[data-theme="burdeos"] .text-slate-600,
+html[data-theme="burdeos"] .text-slate-500 {
+  color: var(--text-muted) !important;
+}
+
+html[data-theme="burdeos"] .text-slate-400 {
+  color: var(--accent-500) !important;
+}
+
+html[data-theme="burdeos"] .bg-slate-50,
+html[data-theme="burdeos"] .bg-slate-50\/50 {
+  background-color: var(--accent-50) !important;
+}
+
+html[data-theme="burdeos"] .hover\:bg-slate-50:hover {
+  background-color: var(--accent-50) !important;
+}
+
+html[data-theme="burdeos"] header .hover\:bg-slate-700:hover {
+  background-color: #9f1239 !important;
+}
+
+html[data-theme="burdeos"] .hover\:text-slate-900:hover,
+html[data-theme="burdeos"] .hover\:text-slate-700:hover {
+  color: var(--text-main) !important;
+}
+
+html[data-theme="burdeos"] .bg-indigo-50 {
+  background-color: var(--accent-50) !important;
+}
+
+html[data-theme="burdeos"] .bg-indigo-50\/50 {
+  background-color: rgba(255, 241, 242, 0.5) !important;
+}
+
+html[data-theme="burdeos"] .bg-indigo-50\/60 {
+  background-color: rgba(255, 241, 242, 0.6) !important;
+}
+
+html[data-theme="burdeos"] .bg-indigo-50\/70 {
+  background-color: rgba(255, 241, 242, 0.7) !important;
+}
+
+html[data-theme="burdeos"] .bg-indigo-600 {
+  background-color: var(--accent-600) !important;
+}
+
+html[data-theme="burdeos"] .bg-indigo-700 {
+  background-color: var(--accent-700) !important;
+}
+
+html[data-theme="burdeos"] .bg-indigo-950 {
+  background-color: var(--accent-950) !important;
+}
+
+html[data-theme="burdeos"] .bg-indigo-100 {
+  background-color: var(--accent-100) !important;
+}
+
+html[data-theme="burdeos"] .text-indigo-950 {
+  color: var(--accent-950) !important;
+}
+
+html[data-theme="burdeos"] .text-indigo-900 {
+  color: var(--accent-900) !important;
+}
+
+html[data-theme="burdeos"] .text-indigo-800 {
+  color: var(--accent-800) !important;
+}
+
+html[data-theme="burdeos"] .text-indigo-700 {
+  color: var(--accent-700) !important;
+}
+
+html[data-theme="burdeos"] .text-indigo-600 {
+  color: var(--accent-600) !important;
+}
+
+html[data-theme="burdeos"] .text-indigo-400 {
+  color: var(--accent-400) !important;
+}
+
+html[data-theme="burdeos"] .text-indigo-300 {
+  color: var(--accent-300) !important;
+}
+
+html[data-theme="burdeos"] .border-indigo-100,
+html[data-theme="burdeos"] .border-indigo-200 {
+  border-color: var(--accent-200) !important;
+}
+
+html[data-theme="burdeos"] .border-indigo-700 {
+  border-color: var(--accent-700) !important;
+}
+
+html[data-theme="burdeos"] .hover\:bg-indigo-500:hover {
+  background-color: var(--accent-500) !important;
+}
+
+html[data-theme="burdeos"] .hover\:bg-indigo-800:hover {
+  background-color: var(--accent-800) !important;
+}
+
+html[data-theme="burdeos"] .from-slate-900 {
+  --tw-gradient-from: var(--bg-header) !important;
+}
+
+html[data-theme="burdeos"] .via-indigo-950 {
+  --tw-gradient-via: var(--accent-950) !important;
+}
+
+html[data-theme="burdeos"] .to-slate-900 {
+  --tw-gradient-to: var(--bg-header) !important;
+}
+
+html[data-theme="burdeos"] .focus\:ring-indigo-500:focus,
+html[data-theme="burdeos"] .focus\:ring-indigo-600:focus {
+  --tw-ring-color: var(--accent-500) !important;
+}
+
+html[data-theme="burdeos"] .focus\:border-indigo-500:focus {
+  border-color: var(--accent-500) !important;
+}
+
+html[data-theme="burdeos"] ::-webkit-scrollbar-thumb {
+  background: var(--accent-300);
+}
+
+html[data-theme="burdeos"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-500);
 }
 
 /* Custom scrollbars */
