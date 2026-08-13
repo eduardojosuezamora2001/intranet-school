@@ -6,12 +6,62 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert } from '../components/ui/widgets';
 import { GraduationCap, KeyRound, UserCheck, Shield, BookOpen, Users, ArrowRight } from 'lucide-react';
 
+const CREDENTIALS_KEY = 'san_martin_saved_credentials';
+const REMEMBER_KEY = 'san_martin_remember';
+
+// Precarga de credenciales guardadas (si el usuario marcó "Recordar usuario")
+function loadSavedCredentials() {
+  try {
+    const raw = localStorage.getItem(CREDENTIALS_KEY);
+    if (!raw) return { username: 'admin', password: 'admin123' };
+    const saved = JSON.parse(raw);
+    return {
+      username: saved.username ?? 'admin',
+      password: saved.password ?? 'admin123',
+    };
+  } catch {
+    return { username: 'admin', password: 'admin123' };
+  }
+}
+
+// Guarda o elimina las credenciales según el estado del checkbox
+function saveCredentials(user, pass, remember) {
+  try {
+    if (remember) {
+      localStorage.setItem(CREDENTIALS_KEY, JSON.stringify({ username: user, password: pass }));
+    } else {
+      localStorage.removeItem(CREDENTIALS_KEY);
+    }
+  } catch {
+    // Silenciar errores de storage (modo privado, cuota, etc.)
+  }
+}
+
 export function Login() {
   const { login } = useAuth();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const initial = loadSavedCredentials();
+  const [username, setUsername] = useState(initial.username);
+  const [password, setPassword] = useState(initial.password);
+  const [rememberUser, setRememberUser] = useState(() => {
+    try {
+      return localStorage.getItem(REMEMBER_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleRememberChange = (e) => {
+    const checked = e.target.checked;
+    setRememberUser(checked);
+    try {
+      localStorage.setItem(REMEMBER_KEY, String(checked));
+      if (!checked) localStorage.removeItem(CREDENTIALS_KEY);
+    } catch {
+      // Silenciar errores de storage
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,6 +69,7 @@ export function Login() {
     setLoading(true);
     try {
       await login(username, password);
+      saveCredentials(username, password, rememberUser);
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión');
     } finally {
@@ -33,6 +84,7 @@ export function Login() {
     setLoading(true);
     try {
       await login(user, pass);
+      saveCredentials(user, pass, rememberUser);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -102,6 +154,18 @@ export function Login() {
                   className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
+             
+              <label className="flex items-center space-x-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberUser}
+                  onChange={handleRememberChange}
+                  className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900"
+                />
+                <span className="text-xs text-slate-300">
+                  Recordar usuario en este equipo
+                </span>
+              </label>
 
               <Button
                 type="submit"
