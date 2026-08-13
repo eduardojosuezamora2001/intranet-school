@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
+import { Chatbot } from './components/Chatbot';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Comunicados } from './pages/Comunicados';
@@ -59,6 +60,7 @@ function MainApp() {
           {renderContent()}
         </main>
       </div>
+      <Chatbot currentTab={currentTab} />
     </div>
   );
 }
